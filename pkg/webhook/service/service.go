@@ -36,9 +36,16 @@ func CreateOrUpdateSecureService(client crclient.Client, ctx context.Context, na
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
+					Name:       server.WebhookServerPortName,
 					Port:       port,
 					Protocol:   "TCP",
 					TargetPort: intstr.FromString(server.WebhookServerPortName),
+				},
+				{
+					Name:       server.WebhookMetricsPortName,
+					Port:       9443,
+					Protocol:   "TCP",
+					TargetPort: intstr.FromString(server.WebhookMetricsPortName),
 				},
 			},
 			Selector: server.WebhookServerAppLabels(),
@@ -56,11 +63,10 @@ func CreateOrUpdateSecureService(client crclient.Client, ctx context.Context, na
 
 		// Cannot naively copy spec, as clusterIP is unmodifiable
 		clusterIP := existingCfg.Spec.ClusterIP
-		service.Spec = existingCfg.Spec
-		service.Spec.ClusterIP = clusterIP
-		service.ResourceVersion = existingCfg.ResourceVersion
+		existingCfg.Spec = service.Spec
+		existingCfg.Spec.ClusterIP = clusterIP
 
-		err = client.Update(ctx, service)
+		err = client.Update(ctx, existingCfg)
 		if err != nil {
 			return err
 		}
